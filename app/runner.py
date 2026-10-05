@@ -25,7 +25,8 @@ USAR_API = os.environ.get("PLAGIO_USE_API", "0") == "1"
 
 # --- Estado ---------------------------------------------------------------
 
-def _indice_existe() -> bool:
+def indice_existe() -> bool:
+    """True si hay indice de trabajos previos en disco."""
     return settings.chroma_dir.exists() and any(settings.chroma_dir.glob("*.pkl"))
 
 
