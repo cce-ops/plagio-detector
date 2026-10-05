@@ -5,6 +5,7 @@ from app.runner import (
     guardar_config,
     indice_existe,
     probar_config,
+    resumen_config,
 )
 
 st.set_page_config(page_title="Detector de Plagio IA", layout="wide")
@@ -58,6 +59,7 @@ HELP = {
 
 with st.sidebar:
     st.header("⚙️ Configuración LLM")
+    st.caption("Cada visitante usa su propia clave. No se guarda ni se comparte.")
 
     provider = st.selectbox(
         "Proveedor",
@@ -66,11 +68,25 @@ with st.sidebar:
     )
 
     if provider != "ollama":
+        # La clave vive en session_state: sobrevive al rerun de Streamlit y
+        # nunca se comparte entre visitantes.
+        clave_guardada = st.session_state.get("api_key", "")
+        tipo_key = "password" if clave_guardada else "default"
         api_key = st.text_input(
             "API Key",
-            type="password",
+            type=tipo_key,
+            value=clave_guardada,
             help=f"Obtén tu key en {HELP[provider]}" if HELP[provider] else "",
         )
+        if api_key and api_key != clave_guardada:
+            st.session_state["api_key"] = api_key
+        if not api_key and tipo_key == "password":
+            st.session_state.pop("api_key", None)
+
+        origen = resumen_config().get(provider, "sin clave")
+        if origen == "clave del despliegue":
+            st.caption("ℹ️ Este despliegue ya tiene una clave configurada; "
+                       "puedes usarla o escribir la tuya para reemplazarla.")
     else:
         ollama_host = st.text_input("Ollama Host", value="http://localhost:11434")
 

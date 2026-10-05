@@ -1,5 +1,7 @@
-from pydantic_settings import BaseSettings
+import threading
 from pathlib import Path
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -33,7 +35,61 @@ class Settings(BaseSettings):
         env_file = ".env"
 
 
-settings = Settings()
+class _AjustesPorSesion:
+    """Ajustes del LLM aislados por hilo.
+
+    Cada sesion de Streamlit corre en su propio hilo, asi que cada visitante
+    usa su propia clave sin que una sobrescriba a otra. Sin esto, todos los
+    usuarios del deployment compartido compartirian la misma variable global y
+    la clave de uno acabaria usandose en la sesion de otro.
+    """
+
+    def __init__(self, base: Settings):
+        self._base = base
+        self._local = threading.local()
+
+    def _ajustes(self) -> dict:
+        return getattr(self._local, "datos", None) or {}
+
+    def aplicar(self, **campos) -> None:
+        datos = dict(self._ajustes())
+        for k, v in campos.items():
+            if v:
+                datos[k] = v
+        self._local.datos = datos
+
+    def limpiar(self) -> None:
+        self._local.datos = {}
+
+    def usar_secretos(self, secretos: dict | None) -> None:
+        """Valores por defecto del despliegue (Streamlit secrets), no del usuario."""
+        if not secretos:
+            return
+        self._local.secretos = {
+            "gemini_api_key": secretos.get("gemini_api_key", ""),
+            "groq_api_key": secretos.get("groq_api_key", ""),
+            "openrouter_api_key": secretos.get("openrouter_api_key", ""),
+            "nvidia_nim_api_key": secretos.get("nvidia_nim_api_key", ""),
+        }
+
+    def __getattr__(self, nombre):
+        # Prioridad: ajuste del usuario > secret del despliegue > .env
+        aj = self._ajustes()
+        if nombre in aj:
+            return aj[nombre]
+        sec = getattr(self._local, "secretos", None) or {}
+        if sec.get(nombre):
+            return sec[nombre]
+        return getattr(self._base, nombre)
+
+    def __setattr__(self, nombre, valor):
+        if nombre.startswith("_"):
+            object.__setattr__(self, nombre, valor)
+        else:
+            self.aplicar(**{nombre: valor})
+
+
+settings = _AjustesPorSesion(Settings())
 
 
 # Modelos gratis con API Key (lista real)

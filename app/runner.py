@@ -31,8 +31,21 @@ def _indice_existe() -> bool:
 
 # --- Configuracion del LLM ------------------------------------------------
 
+def _secretos() -> dict:
+    """Claves definidas en el despliegue (Streamlit Community Cloud)."""
+    try:
+        import streamlit as st
+        return dict(st.secrets)
+    except Exception:
+        return {}
+
+
 def guardar_config(provider: str, model: str, api_key: str, ollama_host: str) -> None:
-    """Guarda la configuracion del proveedor seleccionado."""
+    """Guarda la configuracion SOLO para la sesion actual.
+
+    En un despliegue compartido cada visitante introduce su propia clave y
+    queda aislada: no se ve ni se pisa la de los demas.
+    """
     if USAR_API:
         import requests
         payload = {"provider": provider, f"{provider}_model": model}
@@ -46,26 +59,23 @@ def guardar_config(provider: str, model: str, api_key: str, ollama_host: str) ->
         requests.post(f"{API}/config/llm", json=payload, timeout=30)
         return
 
-    settings.llm_provider = provider
+    settings.usar_secretos(_secretos())
+    settings.aplicar(llm_provider=provider)
     if provider == "ollama":
-        settings.ollama_host = ollama_host or settings.ollama_host
-        settings.ollama_model = model
+        settings.aplicar(ollama_host=ollama_host, ollama_model=model)
     elif provider == "nim":
-        settings.nvidia_nim_api_key = api_key
-        settings.nvidia_nim_model = model
+        settings.aplicar(nvidia_nim_api_key=api_key, nvidia_nim_model=model)
     elif provider == "gemini":
-        settings.gemini_api_key = api_key
-        settings.gemini_model = model
+        settings.aplicar(gemini_api_key=api_key, gemini_model=model)
     elif provider == "groq":
-        settings.groq_api_key = api_key
-        settings.groq_model = model
+        settings.aplicar(groq_api_key=api_key, groq_model=model)
     elif provider == "openrouter":
-        settings.openrouter_api_key = api_key
-        settings.openrouter_model = model
+        settings.aplicar(openrouter_api_key=api_key, openrouter_model=model)
 
 
 def probar_config() -> dict:
     """Comprueba que el proveedor configurado responde."""
+    settings.usar_secretos(_secretos())
     if USAR_API:
         import requests
         try:
@@ -122,3 +132,14 @@ def analizar(contenido: bytes | None = None, ruta=None, texto: str | None = None
 
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}
+
+
+# --- Estado del despliegue ------------------------------------------------
+
+def resumen_config() -> dict:
+    """Indica de donde sale la clave de cada proveedor (sin mostrarla)."""
+    sec = _secretos()
+    return {
+        p: ("clave del despliegue" if sec.get(f"{p}_api_key") else "sin clave")
+        for p in ("gemini", "groq", "openrouter", "nim")
+    }
