@@ -14,12 +14,12 @@ pytesseract==0.3.10
 Pillow==12.3.0
 
 # Embeddings y busqueda vectorial
-sentence-transformers==3.2.1
+sentence-transformers==6.1.0
 scikit-learn>=1.5.0
 
 # Similitud lexica
 datasketch==1.6.5
-nltk==3.10.3
+
 
 # Busqueda web
 ddgs==9.0.0
