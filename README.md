@@ -33,65 +33,146 @@ Si los autores coinciden (una memoria y su presentación, por ejemplo), la
 coincidencia se excluye automáticamente: es material reutilizado del mismo
 trabajo, no plagio.
 
-## Requisitos
+---
 
-- Python 3.11 o superior
-- Tesseract OCR (solo para PDFs escaneados):
-  `winget install UB-Mannheim.TesseractOCR`
-  Si no está en el PATH, ajusta `TESSERACT_CMD` en `app/core/extractor.py`.
+## Guía de instalación paso a paso (sin experiencia previa)
 
-## Instalación
+### Paso 1: Instalar Python
 
-```powershell
+1. Ve a https://www.python.org/downloads/
+2. Descarga la versión 3.11 o superior (el botón grande amarillo).
+3. Ejecuta el instalador.
+4. **IMPORTANTE:** En la primera pantalla del instalador, marca la casilla
+   "Add python to PATH" antes de pulsar "Install Now".
+5. Espera a que termine y cierra el instalador.
+
+### Paso 2: Instalar Git (para clonar el repositorio)
+
+1. Ve a https://git-scm.com/downloads
+2. Descarga la versión para Windows.
+3. Ejecuta el instalador con las opciones por defecto (pulsa "Next" en cada
+   pantalla y "Install" al final).
+4. Al terminar, abre el menú de inicio y busca "Git Bash". Ábrelo para verificar
+   que funciona.
+
+### Paso 3: Clonar el repositorio
+
+En la terminal (Git Bash o PowerShell):
+
+```bash
+git clone https://github.com/cce-ops/plagio-detector.git
+cd plagio-detector
+```
+
+### Paso 4: Crear el entorno virtual e instalar dependencias
+
+En la misma terminal:
+
+```bash
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+```
+
+La primera vez tarda varios minutos (descarga PyTorch y otros paquetes grandes).
+
+### Paso 5: Crear el archivo de configuración
+
+```bash
 Copy-Item .env.example .env
 ```
 
-## Uso
+### Paso 6: Obtener una API Key de Gemini
 
-### 1. Indexar los trabajos anteriores
+1. Ve a https://aistudio.google.com/apikey
+2. Inicia sesión con tu cuenta de Google.
+3. Pulsa "Create API Key".
+4. Copia la clave que aparece (empieza por "AIza...").
 
-Coloca los documentos en `data/repositorio/<curso>/<asignatura>/<año>/` y ejecuta:
+### Paso 7: Instalar Tesseract OCR (opcional, solo para PDFs escaneados)
 
-```powershell
-python -m scripts.indexar_repositorio
+```bash
+winget install UB-Mannheim.TesseractOCR
 ```
 
-El índice se guarda en `data/chroma_db/` y se puede reconstruir cuando quieras.
-La primera vez descarga el modelo de embeddings (~1.1 GB).
+Si un PDF escaneado no tiene texto extraíble, la app usa OCR para leerlo.
+Sin Tesseract, los PDFs escaneados mostrarán "[pytesseract no instalado]".
+
+---
+
+## Uso de la aplicación
+
+### 1. Indexar los trabajos anteriores (opcional pero recomendado)
+
+Si quieres comparar contra trabajos de años anteriores:
+
+1. Crea la carpeta `data/repositorio/` en la raíz del proyecto.
+2. Dentro, organiza los documentos así:
+   ```
+   data/repositorio/<curso>/<asignatura>/<año>/<archivo>.pdf
+   ```
+   Ejemplo:
+   ```
+   data/repositorio/2024-25/energia-solar/2024/proyecto-garcia.pdf
+   ```
+3. Ejecuta el indexador:
+   ```bash
+   python -m scripts.indexar_repositorio
+   ```
+4. Espera a que termine (la primera vez descarga el modelo de embeddings, ~1.1 GB).
+
+**Nota:** El repositorio de GitHub NO incluye la carpeta `data/` porque contiene
+datos personales de estudiantes. Debes crearla y llenarla en tu máquina.
 
 ### 2. Arrancar la aplicación
 
-```powershell
+```bash
 python -m streamlit run streamlit_app.py
 ```
 
-Abre http://localhost:8501
+Abre tu navegador en http://localhost:8501
 
-La aplicación corre en un solo proceso: no hace falta levantar la API.
-Para usarla como servicio HTTP aparte:
+### 3. Configurar la API Key
 
-```powershell
-python -m uvicorn app.main:app --reload   # http://localhost:8000/docs
-```
+En la barra lateral izquierda:
+1. Selecciona "Gemini (Google)" como proveedor.
+2. Pega tu API Key en el campo "API Key".
+3. Selecciona un modelo (recomendado: `gemini-3.8-flash`).
+4. Pulsa "Probar" para verificar que la clave funciona.
+5. Pulsa "Guardar".
+
+### 4. Analizar un documento
+
+1. Selecciona "Subir archivo" o "Pegar texto".
+2. Sube un PDF, DOCX, TXT, MD o imagen (máximo 200MB).
+3. Pulsa "Analizar".
+4. Revisa los resultados: veredicto global, fragmentos con evidencia, y
+   justificación del LLM.
+
+---
 
 ## Proveedores de IA
 
 Cada usuario introduce su propia clave en la barra lateral. Hay un botón
 **Probar** que valida la clave y el modelo antes de analizar.
 
-| Proveedor   | Modelos                                             |
-|-------------|-----------------------------------------------------|
-| Gemini      | `gemini-3.8-flash`, `gemini-3.7-flash`, ...          |
-| Groq        | `openai/gpt-oss-120b`, `openai/gpt-oss-20b`          |
-| OpenRouter  | `nvidia/nemotron-3-ultra-550b-a55b:free`, ...        |
-| NVIDIA NIM  | `nvidia/nemotron-3-ultra-550b-a55b`, ...             |
-| Ollama      | local, sin límites                                  |
+| Proveedor | Modelos                                                   |
+|-----------|-----------------------------------------------------------|
+| Gemini    | `gemini-3.8-flash`, `gemini-3.7-flash`, ...              |
 
 Si el proveedor falla, se prueban los demás modelos del mismo proveedor antes
 de rendirse.
+
+---
+
+## Búsqueda web
+
+La búsqueda web (DuckDuckGo) funciona de forma independiente al índice local.
+Puedes activarla o desactivarla con la casilla "Buscar en web (DuckDuckGo)" en
+la barra lateral. Si no tienes el repositorio indexado, la búsqueda web sigue
+permitiendo detectar coincidencias en internet.
+
+---
 
 ## Despliegue
 
@@ -105,10 +186,16 @@ de rendirse.
 El repositorio **no incluye `data/`**: los trabajos de los estudiantes
 contienen datos personales y académicos, y no deben subirse.
 
+**Limitación:** En Streamlit Community Cloud, el índice local no está disponible.
+Solo funciona la búsqueda web. Para usar el repositorio completo, ejecuta la
+aplicación en tu propio máquina o servidor.
+
 ### Hugging Face Spaces (gratis, con Docker)
 
 Se puede desplegar el mismo código como Space. Los documentos de referencia
 pueden montarse desde un dataset privado del Space.
+
+---
 
 ## Estructura
 
@@ -131,6 +218,8 @@ app/
 scripts/
   indexar_repositorio.py construye el índice
 ```
+
+---
 
 ## Notas
 
