@@ -19,6 +19,11 @@ TIPOS = {
     "potencial": "Posible coincidencia web",
 }
 
+# El LLM solo redacta la justificacion: limitar a los fragmentos mas severos.
+# Sin tope, un documento con N coincidencias genera N llamadas HTTP
+# secuenciales (cada una con reintentos y fallback entre modelos).
+MAX_JUSTIFICACIONES_LLM = 5
+
 
 def _titulo(tipo: str, sim, meta: dict, mismo_autor: bool,
             nums: dict | None = None, ents: dict | None = None) -> str:
@@ -143,7 +148,11 @@ def analizar_documento(texto: str, usar_llm: bool = True, usar_web: bool = True)
             c for c in coincidencias
             if c["origen"] == "repositorio" and not c["mismo_autor"]
         ]
-        for c in pendientes:
+        pendientes.sort(
+            key=lambda c: c["veredicto_llm"].get("severidad", 0),
+            reverse=True,
+        )
+        for c in pendientes[:MAX_JUSTIFICACIONES_LLM]:
             texto_just = justificar(
                 c["fragmento_entregado"],
                 c["fragmento_fuente"],
