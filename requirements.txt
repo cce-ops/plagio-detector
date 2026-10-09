@@ -35,4 +35,4 @@ python-dotenv==1.2.2
 tqdm==4.66.5
 
 # Google Drive (public folders)
-gdown==5.2.0
+gdown==5.2.2
