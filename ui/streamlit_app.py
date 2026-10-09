@@ -7,6 +7,7 @@ from app.runner import (
     probar_config,
     resumen_config,
 )
+from app.core.drive_public import indexar_carpeta_publica
 
 st.set_page_config(page_title="Detector de Plagio IA", layout="wide")
 st.title("🔍 Detector de Plagio para Proyectos de Ingeniería")
@@ -87,6 +88,30 @@ with st.sidebar:
             st.error(f"❌ {rj.get('error')}")
             for d in rj.get("detalles", [])[:4]:
                 st.caption(d)
+
+    st.divider()
+    st.header("📁 Google Drive")
+
+    drive_url = st.text_input(
+        "Dirección carpeta Drive",
+        placeholder="https://drive.google.com/drive/folders/...",
+        help="Pega el enlace de una carpeta COMPARTIDA PÚBLICAMENTE (cualquiera con el enlace puede ver)",
+    )
+    if drive_url and st.button("Indexar carpeta"):
+        with st.spinner("Indexando documentos de Drive..."):
+            try:
+                resultado = indexar_carpeta_publica(drive_url)
+                count = resultado["count"]
+                errores = resultado["errores"]
+                st.success(f"{count} documentos leídos/considerados")
+                if errores:
+                    st.warning(f"{len(errores)} archivos no se pudieron indexar:")
+                    for err in errores[:5]:
+                        st.caption(err)
+            except Exception as e:
+                st.error(f"Error al indexar: {e}")
+
+    st.caption("ℹ️ La carpeta debe ser compartida como 'Cualquiera con el enlace'.")
 
     st.divider()
     st.header("🔧 Opciones")

@@ -60,6 +60,7 @@ def indexar_proyecto(
     anio: str,
     chunks: list[dict],
     autores: list[str] | None = None,
+    origen: str = "repositorio",
 ):
     _load()
     textos = [c["texto"] for c in chunks]
@@ -74,6 +75,7 @@ def indexar_proyecto(
             "anio": anio,
             "chunk_id": c["id"],
             "autores": lista_autores,
+            "origen": origen,
         }
         for c in chunks
     ]
