@@ -35,7 +35,74 @@ trabajo, no plagio.
 
 ---
 
-## Guía de instalación paso a paso 
+## Cómo funciona el detector (resumen)
+
+1. **Extrae el texto** del documento (PDF, DOCX, TXT, MD o imagen con OCR).
+2. **Lo divide en fragmentos** de unas 400 palabras.
+3. **Compara cada fragmento** con los trabajos de referencia (carpeta de Drive
+   indexada y/o repositorio local) usando cuatro medidas objetivas:
+   solapamiento léxico, similitud semántica, valores numéricos idénticos y
+   entidades nombradas idénticas.
+4. **El motor de reglas decide** el veredicto de cada fragmento
+   (plagio / dudoso / no plagio) y el veredicto global. Esta decisión es
+   reproducible: con las mismas entradas siempre sale lo mismo.
+5. **La IA solo redacta** la justificación en lenguaje natural de los 5
+   fragmentos más severos. No puede cambiar el veredicto.
+6. Opcionalmente, **busca en internet** (DuckDuckGo) frases literales del
+   documento.
+
+---
+
+## Uso online (sin instalar nada)
+
+La aplicación está disponible en
+**https://plagio-detector.streamlit.app/**. No hay que instalar Python ni usar
+la terminal. Pasos para un profesor:
+
+### 1. Conseguir una API Key de Gemini (gratis)
+
+1. Ve a https://aistudio.google.com/apikey
+2. Inicia sesión con tu cuenta de Google.
+3. Pulsa "Create API Key" y copia la clave (empieza por "AIza...").
+
+### 2. Preparar la carpeta de Drive con trabajos anteriores
+
+1. En Google Drive, crea una carpeta (por ejemplo, "PLAGIO") y sube los
+   trabajos de años anteriores.
+2. **Consejo:** convierte los documentos a formato `.md` (Markdown) antes de
+   subirlos: ocupan mucho menos que un PDF y el texto se extrae al instante,
+   sin OCR. En Google Docs: Archivo → Descargar → Texto sin formato (`.txt`),
+   y cambia la extensión a `.md`. También vale `.txt` directamente.
+3. Comparte la carpeta: clic derecho → Compartir → Acceso general →
+   **"Cualquiera con el enlace"** (con rol Lector basta) → Copiar enlace.
+4. Aviso: cualquiera con el enlace puede ver esos archivos. No subas datos
+   sensibles.
+
+### 3. Configurar la aplicación
+
+1. Abre https://plagio-detector.streamlit.app/
+2. En la barra lateral, pega tu API Key, elige un modelo (recomendado:
+   `gemini-3.8-flash`), pulsa **Probar** para verificarla y luego **Guardar**.
+3. En la sección "Google Drive", pega el enlace de la carpeta y pulsa
+   **Indexar carpeta**. Cuando termine verás
+   "X documentos leídos/considerados".
+
+### 4. Analizar un trabajo
+
+1. Elige "Subir archivo" o "Pegar texto".
+2. Sube el archivo (PDF, DOCX, TXT, MD o imagen, máximo 200MB) y pulsa
+   **Analizar**.
+3. Revisa el veredicto global, las métricas y cada coincidencia. La IA redacta
+   la justificación de los 5 fragmentos más severos; el resto muestra el
+   veredicto del motor de reglas.
+
+**Nota:** la primera vez que se analiza un documento, la aplicación descarga el
+modelo de embeddings (~1 GB) y tarda unos minutos. Los siguientes análisis son
+más rápidos.
+
+---
+
+## Guía de instalación paso a paso
 
 ### Paso 1: Instalar Python
 
@@ -186,9 +253,10 @@ permitiendo detectar coincidencias en internet.
 El repositorio **no incluye `data/`**: los trabajos de los estudiantes
 contienen datos personales y académicos, y no deben subirse.
 
-**Limitación:** En Streamlit Community Cloud, el índice local no está disponible.
-Solo funciona la búsqueda web. Para usar el repositorio completo, ejecuta la
-aplicación en tu propio máquina o servidor.
+**Nota:** En Streamlit Community Cloud no hay carpeta local persistente; los
+trabajos de referencia se aportan mediante una carpeta pública de Google Drive
+(sección "Google Drive" de la barra lateral). La búsqueda web funciona igual
+que en local.
 
 ### Hugging Face Spaces (gratis, con Docker)
 
@@ -214,6 +282,7 @@ app/
     decision.py          motor de reglas: decide plagio/dudoso/no
     judge.py             el LLM solo redacta la justificación
     web_search.py        coincidencias en internet
+    drive_public.py      indexa carpetas públicas de Google Drive
     analyzer.py          orquesta el análisis completo
 scripts/
   indexar_repositorio.py construye el índice
