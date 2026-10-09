@@ -1,3 +1,5 @@
+import json
+
 import streamlit as st
 
 from app.runner import (
@@ -41,6 +43,8 @@ with st.sidebar:
         format_func=lambda p: PROVIDERS[p],
     )
 
+    api_key = ""
+    ollama_host = ""
     if provider != "ollama":
         # La clave vive en session_state: sobrevive al rerun de Streamlit y
         # nunca se comparte entre visitantes.

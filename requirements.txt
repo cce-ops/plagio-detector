@@ -33,3 +33,6 @@ streamlit>=1.39.0
 # Utils
 python-dotenv==1.2.2
 tqdm==4.66.5
+
+# Google Drive (public folders)
+gdown==5.2.0

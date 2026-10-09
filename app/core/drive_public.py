@@ -1,11 +1,10 @@
 """Indexar documentos de una carpeta pública de Google Drive.
 
-No requiere autenticacion ni Google Cloud Console. La carpeta debe estar
-compartida como "Cualquiera con el enlace puede ver".
+Usa gdown para descargar la carpeta completa sin autenticacion.
+La carpeta debe estar compartida como "Cualquiera con el enlace puede ver".
 """
-import io
-import re
-import httpx
+import tempfile
+from pathlib import Path
 
 from app.core.chunker import chunk_text
 from app.core.extractor import extract_text
@@ -15,103 +14,49 @@ from app.core.authors import extraer_autores
 SUFIJOS = (".pdf", ".docx", ".txt", ".md")
 
 
-def _extraer_folder_id(url: str) -> str:
-    """Extrae el ID de carpeta de una URL de Google Drive."""
-    match = re.search(r"/folders/([a-zA-Z0-9_-]+)", url)
-    if not match:
-        raise ValueError(
-            "No se pudo extraer el ID de la carpeta. "
-            "Asegúrate de que el enlace sea de una carpeta compartida."
-        )
-    return match.group(1)
-
-
-def _listar_archivos_publicos(folder_id: str) -> list[dict]:
-    """Lista los archivos de una carpeta pública usando la API REST pública."""
-    # La API pública de Drive permite listar carpetas compartidas sin auth
-    url = f"https://www.googleapis.com/drive/v3/files"
-    params = {
-        "q": f"'{folder_id}' in parents and trashed = false",
-        "fields": "files(id,name,mimeType)",
-        "pageSize": 1000,
-        "supportsAllDrives": "true",
-        "includeItemsFromAllDrives": "true",
-        "key": "anonymous",
-    }
-    try:
-        r = httpx.get(url, params=params, timeout=30)
-        r.raise_for_status()
-        return r.json().get("files", [])
-    except httpx.HTTPStatusError:
-        # Si la API pública no funciona, intentamos con el HTML de la carpeta
-        return _listar_desde_html(folder_id)
-
-
-def _listar_desde_html(folder_id: str) -> list[dict]:
-    """Fallback: extrae IDs del HTML de la carpeta pública."""
-    url = f"https://drive.google.com/drive/folders/{folder_id}"
-    r = httpx.get(url, timeout=30, follow_redirects=True)
-    r.raise_for_status()
-
-    # Buscar patrones de ID en el HTML
-    ids = re.findall(r'"([a-zA-Z0-9_-]{25,})"', r.text)
-    nombres = re.findall(r'"name":"([^"]+)"', r.text)
-
-    archivos = []
-    for i, file_id in enumerate(ids):
-        nombre = nombres[i] if i < len(nombres) else f"documento_{i}.pdf"
-        archivos.append({
-            "id": file_id,
-            "name": nombre,
-            "mimeType": "application/pdf",
-        })
-    return archivos
-
-
-def _descargar_publico(file_id: str) -> bytes:
-    """Descarga un archivo público de Drive."""
-    url = f"https://drive.google.com/uc?export=download&id={file_id}"
-    r = httpx.get(url, timeout=120, follow_redirects=True)
-    r.raise_for_status()
-    return r.content
-
-
 def indexar_carpeta_publica(folder_url: str) -> dict:
-    """Indexa todos los documentos de una carpeta pública de Drive."""
-    import tempfile
-    from pathlib import Path
+    """Indexa todos los documentos de una carpeta pública de Drive.
 
-    folder_id = _extraer_folder_id(folder_url)
-    archivos = _listar_archivos_publicos(folder_id)
+    Usa gdown.download_folder() que maneja la descarga de carpetas públicas
+    sin necesidad de API key ni OAuth.
+    """
+    try:
+        import gdown
+    except ImportError as e:
+        raise RuntimeError(
+            "Falta la dependencia 'gdown'. Instala con: pip install -r requirements.txt"
+        ) from e
 
-    # Filtrar solo formatos soportados
-    documentos = [
-        f for f in archivos
-        if any(f.get("name", "").lower().endswith(ext) for ext in SUFIJOS)
+    output_dir = tempfile.mkdtemp(prefix="drive_")
+
+    # gdown descarga todos los archivos de la carpeta pública
+    gdown.download_folder(
+        folder_url,
+        output=output_dir,
+        quiet=False,
+        remaining_ok=True,
+        use_cookies=False,
+    )
+
+    # Indexar todos los archivos descargados
+    archivos = [
+        p for p in Path(output_dir).rglob("*")
+        if p.suffix.lower() in SUFIJOS and p.is_file()
     ]
 
     count = 0
     errores = []
 
-    for doc in documentos:
+    for path in archivos:
         try:
-            contenido = _descargar_publico(doc["id"])
-            suf = Path(doc["name"]).suffix
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suf) as tmp:
-                tmp.write(contenido)
-                tmp_path = Path(tmp.name)
-            try:
-                texto = extract_text(tmp_path)
-            finally:
-                tmp_path.unlink(missing_ok=True)
-
+            texto = extract_text(path)
             if not texto.strip():
                 continue
 
             chunks = chunk_text(texto)
             autores = extraer_autores(texto)
             indexar_proyecto(
-                proyecto_id=doc["name"],
+                proyecto_id=path.stem,
                 chunks=chunks,
                 autor="",
                 curso="",
@@ -122,6 +67,6 @@ def indexar_carpeta_publica(folder_url: str) -> dict:
             )
             count += 1
         except Exception as e:
-            errores.append(f"{doc.get('name', '?')}: {e}")
+            errores.append(f"{path.name}: {e}")
 
     return {"count": count, "errores": errores}
