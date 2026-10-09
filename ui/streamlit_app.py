@@ -13,48 +13,21 @@ st.title("🔍 Detector de Plagio para Proyectos de Ingeniería")
 
 PROVIDERS = {
     "gemini": "🟢 Gemini (Google)",
-    "groq": "🟠 Groq",
-    "openrouter": "🔵 OpenRouter",
-    "nim": "🟣 NVIDIA NIM",
-    "ollama": "🦙 Ollama (local)",
 }
 
 MODELS = {
     "gemini": [
         "gemini-3.8-flash",
-        "gemini-3.8-live",
-        "gemini-3.8-live-extended-thinking",
         "gemini-3.7-flash",
         "gemini-3.6-flash",
         "gemini-3.5-flash",
         "gemini-3.5-flash-lite",
         "gemini-3.1-flash-lite",
     ],
-    "groq": ["openai/gpt-oss-120b", "openai/gpt-oss-20b"],
-    "openrouter": [
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "stealth/space-bunny-alpha",
-    ],
-    "nim": [
-        "nvidia/nemotron-3-ultra-550b-a55b",
-        "nvidia/nemotron-4-340b-instruct",
-    ],
-    "ollama": [
-        "llama3.1:8b",
-        "llama3.1:70b",
-        "qwen2.5:7b",
-        "qwen2.5:14b",
-        "mistral:7b",
-        "mistral-nemo:12b",
-    ],
 }
 
 HELP = {
     "gemini": "https://aistudio.google.com/apikey",
-    "groq": "https://console.groq.com/keys",
-    "openrouter": "https://openrouter.ai/keys",
-    "nim": "https://build.nvidia.com",
-    "ollama": "",
 }
 
 with st.sidebar:
@@ -131,8 +104,9 @@ modo = st.radio("Entrada:", ["Subir archivo", "Pegar texto"], horizontal=True)
 
 if modo == "Subir archivo":
     file = st.file_uploader(
-        "Sube PDF, DOCX, TXT o imagen",
+        "Sube PDF, DOCX, TXT, MD o imagen",
         type=["pdf", "docx", "txt", "md", "png", "jpg", "jpeg"],
+        help="Tamaño máximo: 200MB por archivo. Formatos: PDF, DOCX, TXT, MD, PNG, JPG, JPEG",
     )
     if file and st.button("Analizar", type="primary"):
         with st.spinner("Analizando (el OCR de PDFs escaneados puede tardar)..."):
