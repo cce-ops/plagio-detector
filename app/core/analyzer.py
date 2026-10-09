@@ -43,7 +43,8 @@ def _titulo(tipo: str, sim, meta: dict, mismo_autor: bool,
     return f"{etiqueta} · {round(sim * 100)}% · {fuente}{sufijo}"
 
 
-def analizar_documento(texto: str, usar_llm: bool = True, usar_web: bool = True) -> dict:
+def analizar_documento(texto: str, usar_llm: bool = True, usar_web: bool = True,
+                       sesion: str = "") -> dict:
     chunks = chunk_text(texto)
     coincidencias = []
 
@@ -51,7 +52,7 @@ def analizar_documento(texto: str, usar_llm: bool = True, usar_web: bool = True)
 
     # --- 1. Comparación con repositorio interno ---
     for ch in chunks:
-        similares = buscar_similares(ch["texto"], n_results=3)
+        similares = buscar_similares(ch["texto"], n_results=3, sesion=sesion)
         for s in similares:
             if s["similitud"] < settings.threshold_ideas:
                 continue

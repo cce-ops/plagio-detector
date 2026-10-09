@@ -1,5 +1,6 @@
 """Vector store usando scikit-learn NearestNeighbors (puro Python)"""
 import pickle
+import time
 import numpy as np
 from pathlib import Path
 from sklearn.neighbors import NearestNeighbors
@@ -61,6 +62,8 @@ def indexar_proyecto(
     chunks: list[dict],
     autores: list[str] | None = None,
     origen: str = "repositorio",
+    sesion: str = "",
+    indexado_en: float | None = None,
 ):
     _load()
     textos = [c["texto"] for c in chunks]
@@ -76,6 +79,10 @@ def indexar_proyecto(
             "chunk_id": c["id"],
             "autores": lista_autores,
             "origen": origen,
+            # Sesion vacia = repositorio local compartido. Con valor = documentos
+            # de Drive de un visitante concreto (aislamiento por sesion).
+            "sesion": sesion,
+            "indexado_en": indexado_en if indexado_en is not None else time.time(),
         }
         for c in chunks
     ]
@@ -88,21 +95,60 @@ def indexar_proyecto(
     _save()
 
 
-def buscar_similares(texto: str, n_results: int = 5) -> list[dict]:
+def buscar_similares(texto: str, n_results: int = 5, sesion: str = "") -> list[dict]:
     _load()
     if _index is None or len(_data["textos"]) == 0:
         return []
-    
+
     emb = np.array(embed_texts([texto])[0]).reshape(1, -1)
-    n_results = min(n_results, len(_data["textos"]))
-    distances, indices = _index.kneighbors(emb, n_neighbors=n_results)
-    
+    n_all = len(_data["textos"])
+    distances, indices = _index.kneighbors(emb, n_neighbors=n_all)
+
     resultados = []
     for dist, idx in zip(distances[0], indices[0]):
+        meta = _data["metadatas"][idx]
+        # Visible si es del repositorio local compartido (sin sesion) o de mi sesion.
+        if meta.get("sesion") not in ("", None, sesion):
+            continue
         resultados.append({
             "texto": _data["textos"][idx],
-            "metadata": _data["metadatas"][idx],
+            "metadata": meta,
             "distancia": float(dist),
             "similitud": 1 - float(dist),
         })
+        if len(resultados) >= n_results:
+            break
     return resultados
+
+
+def limpiar_sesion(sesion: str) -> int:
+    """Elimina todos los documentos indexados por una sesion. Devuelve el nº borrado."""
+    _load()
+    if not sesion:
+        return 0
+    mantener = [m.get("sesion") != sesion for m in _data["metadatas"]]
+    return _eliminar_segun_mascara(mantener)
+
+
+def limpiar_antiguos(horas: float = 48) -> int:
+    """Elimina documentos de sesion mas antiguos que `horas`. No toca el repositorio local."""
+    _load()
+    corte = time.time() - horas * 3600
+    mantener = [
+        not (m.get("sesion") and (m.get("indexado_en") or 0) < corte)
+        for m in _data["metadatas"]
+    ]
+    return _eliminar_segun_mascara(mantener)
+
+
+def _eliminar_segun_mascara(mantener: list[bool]) -> int:
+    global _index
+    borrados = sum(1 for ok in mantener if not ok)
+    if not borrados:
+        return 0
+    _data["textos"] = [t for t, ok in zip(_data["textos"], mantener) if ok]
+    _data["metadatas"] = [m for m, ok in zip(_data["metadatas"], mantener) if ok]
+    _data["ids"] = [i for i, ok in zip(_data["ids"], mantener) if ok]
+    _rebuild_index()
+    _save()
+    return borrados

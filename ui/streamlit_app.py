@@ -1,4 +1,5 @@
 import json
+import uuid
 
 import streamlit as st
 
@@ -10,9 +11,15 @@ from app.runner import (
     resumen_config,
 )
 from app.core.drive_public import indexar_carpeta_publica
+from app.core.vector_store import limpiar_antiguos, limpiar_sesion
 
 st.set_page_config(page_title="Detector de Plagio IA", layout="wide")
 st.title("🔍 Detector de Plagio para Proyectos de Ingeniería")
+
+# ID unico por visitante: aisla sus documentos indexados de los de otros.
+if "sesion_id" not in st.session_state:
+    st.session_state["sesion_id"] = uuid.uuid4().hex
+sesion_id = st.session_state["sesion_id"]
 
 PROVIDERS = {
     "gemini": "🟢 Gemini (Google)",
@@ -104,10 +111,13 @@ with st.sidebar:
     if drive_url and st.button("Indexar carpeta"):
         with st.spinner("Indexando documentos de Drive..."):
             try:
-                resultado = indexar_carpeta_publica(drive_url)
+                borrados = limpiar_antiguos(horas=48)
+                resultado = indexar_carpeta_publica(drive_url, sesion=sesion_id)
                 count = resultado["count"]
                 errores = resultado["errores"]
                 st.success(f"{count} documentos leídos/considerados")
+                if borrados:
+                    st.caption(f"🧹 {borrados} fragmentos antiguos (+48h) eliminados.")
                 if errores:
                     st.warning(f"{len(errores)} archivos no se pudieron indexar:")
                     for err in errores[:5]:
@@ -115,7 +125,12 @@ with st.sidebar:
             except Exception as e:
                 st.error(f"Error al indexar: {e}")
 
+    if st.button("Borrar mi índice"):
+        n = limpiar_sesion(sesion_id)
+        st.success(f"Índice borrado ({n} fragmentos eliminados).")
+
     st.caption("ℹ️ La carpeta debe ser compartida como 'Cualquiera con el enlace'.")
+    st.caption("Tus documentos solo se usan en tu sesión y se borran solos a las 48h.")
 
     st.divider()
     st.header("🔧 Opciones")
@@ -144,13 +159,15 @@ if modo == "Subir archivo":
                 ruta=file,
                 usar_llm=usar_llm,
                 usar_web=usar_web,
+                sesion=sesion_id,
             )
 else:
     texto = st.text_area("Pega el texto", height=300)
     if texto and st.button("Analizar", type="primary"):
         with st.spinner("Analizando..."):
             st.session_state["resultado"] = analizar(
-                texto=texto, usar_llm=usar_llm, usar_web=usar_web
+                texto=texto, usar_llm=usar_llm, usar_web=usar_web,
+                sesion=sesion_id,
             )
 
 res = st.session_state.get("resultado")

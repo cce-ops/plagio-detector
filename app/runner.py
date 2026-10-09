@@ -89,7 +89,7 @@ def probar_config() -> dict:
 # --- Analisis -------------------------------------------------------------
 
 def analizar(contenido: bytes | None = None, ruta=None, texto: str | None = None,
-             usar_llm: bool = True, usar_web: bool = False) -> dict:
+             usar_llm: bool = True, usar_web: bool = False, sesion: str = "") -> dict:
     """Analiza un documento. Devuelve siempre un dict con 'error' si falla."""
     try:
         if USAR_API:
@@ -129,7 +129,8 @@ def analizar(contenido: bytes | None = None, ruta=None, texto: str | None = None
         if not cuerpo.strip():
             return {"error": "El documento no contiene texto extraible."}
 
-        return analizar_documento(cuerpo, usar_llm=usar_llm, usar_web=usar_web)
+        return analizar_documento(cuerpo, usar_llm=usar_llm, usar_web=usar_web,
+                                 sesion=sesion)
 
     except Exception as e:
         return {"error": f"{type(e).__name__}: {e}"}

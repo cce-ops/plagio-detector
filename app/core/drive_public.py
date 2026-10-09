@@ -14,7 +14,7 @@ from app.core.authors import extraer_autores
 SUFIJOS = (".pdf", ".docx", ".txt", ".md")
 
 
-def indexar_carpeta_publica(folder_url: str) -> dict:
+def indexar_carpeta_publica(folder_url: str, sesion: str = "") -> dict:
     """Indexa todos los documentos de una carpeta pública de Drive.
 
     Usa gdown.download_folder() que maneja la descarga de carpetas públicas
@@ -64,6 +64,7 @@ def indexar_carpeta_publica(folder_url: str) -> dict:
                 anio="",
                 autores=autores,
                 origen="drive",
+                sesion=sesion,
             )
             count += 1
         except Exception as e:
