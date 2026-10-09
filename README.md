@@ -35,7 +35,7 @@ trabajo, no plagio.
 
 ---
 
-## Guía de instalación paso a paso (sin experiencia previa)
+## Guía de instalación paso a paso 
 
 ### Paso 1: Instalar Python
 
