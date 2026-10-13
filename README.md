@@ -4,6 +4,8 @@ Herramienta de detección de plagio para trabajos de ingeniería. Compara una
 entrega contra un repositorio de proyectos anteriores, busca coincidencias en
 internet y clasifica cada fragmento según evidencia medible.
 
+https://plagio-detector.streamlit.app/
+
 ## Idea central
 
 El LLM **no decide** si hay plagio. Un modelo siempre encuentra una explicación
