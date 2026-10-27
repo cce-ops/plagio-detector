@@ -11,7 +11,7 @@ python-docx==1.1.2
 
 # OCR para PDFs escaneados (requiere Tesseract instalado en el sistema)
 pytesseract==0.3.10
-Pillow==12.3.0
+Pillow==13.0.0
 
 # Embeddings y busqueda vectorial
 sentence-transformers==6.1.0
