@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-flash-latest"
     openrouter_api_key: str = ""
     openrouter_model: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     nvidia_nim_api_key: str = ""
@@ -94,6 +94,7 @@ settings = _AjustesPorSesion(Settings())
 
 # Modelos gratis con API Key (lista real)
 GEMINI_MODELS = [
+    "gemini-flash-latest",
     "gemini-3.8-flash",
     "gemini-3.8-live",
     "gemini-3.8-live-extended-thinking",
